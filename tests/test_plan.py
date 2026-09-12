@@ -96,6 +96,15 @@ def test_the_unit_yields_to_whatever_the_machine_is_for() -> None:
     assert "WantedBy=default.target" in text, "a user service, so no root is needed"
 
 
+def test_the_service_starts_runsvc_not_run_sh() -> None:
+    """run.sh leaves the listener running when systemd stops the unit; the orphan keeps the
+    registration and the next start collides with it ("A session for this runner already exists"),
+    leaving the runner offline while jobs queue. runsvc.sh forwards the signal."""
+    text = unit_text(Repo("o", "r"), Path("/home/me/runner"))
+    assert "ExecStart=/home/me/runner/bin/runsvc.sh" in text
+    assert "/run.sh" not in text
+
+
 def test_an_ephemeral_runner_is_not_restarted() -> None:
     """It exits after one job on purpose; restarting it would fight the design."""
     text = unit_text(Repo("o", "r"), Path("/run"), ephemeral=True)

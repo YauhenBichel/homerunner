@@ -98,7 +98,15 @@ def labels(extra: list[str] | None = None, host: str | None = None) -> list[str]
 
 def unit_text(repo: Repo, directory: Path, nice: int = DEFAULT_NICE,
               io_class: str = DEFAULT_IO_CLASS, ephemeral: bool = False) -> str:
-    """The systemd user service. A user service needs no root and stops when the machine does."""
+    """The systemd user service. A user service needs no root and stops when the machine does.
+
+    It starts `bin/runsvc.sh`, not `run.sh`. Measured the hard way on 2026-09-12: with `run.sh`,
+    `systemctl --user stop` left the listener running, because `KillMode=process` signals only the
+    main process and `run.sh` drops its signal trap in the self-update branch. The orphan then held
+    the registration, so the next start met "A session for this runner already exists" and the
+    runner sat offline while jobs queued. `runsvc.sh` traps TERM and forwards it to the service it
+    started, which is why GitHub's own installer uses it.
+    """
     restart = "no" if ephemeral else "always"
     note = ("# Ephemeral: the runner takes one job and exits, and homerunner registers a fresh one.\n"
             if ephemeral else "")
@@ -111,7 +119,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory={directory}
-ExecStart={directory}/run.sh
+ExecStart={directory}/bin/runsvc.sh
 {note}Restart={restart}
 RestartSec=5
 # A job may be running; let it finish rather than killing the whole process group.
