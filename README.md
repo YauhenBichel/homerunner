@@ -106,6 +106,13 @@ runner:
 uv run pytest -q
 ```
 
+## Contributors
+
+Thank you to everyone who has helped.
+
+<!-- readme: contributors,bots/- -start -->
+<!-- readme: contributors,bots/- -end -->
+
 ## Licence
 
 Apache-2.0. See [LICENSE](LICENSE).
