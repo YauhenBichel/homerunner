@@ -7,7 +7,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Yauhen Bichel" }]
 requires-python = ">=3.10"
-keywords = ["github-actions", "self-hosted-runner", "ci", "homelab", "private-repository"]
+keywords = ["github-actions", "self-hosted-runner", "ci", "homelab", "private-repository", "github-runner", "systemd", "cli", "continuous-integration"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -23,6 +23,8 @@ homerunner = "homerunner.cli:main"
 [project.urls]
 Homepage = "https://github.com/YauhenBichel/homerunner"
 Issues = "https://github.com/YauhenBichel/homerunner/issues"
+Repository = "https://github.com/YauhenBichel/homerunner"
+Changelog = "https://github.com/YauhenBichel/homerunner/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = ["pytest>=8"]

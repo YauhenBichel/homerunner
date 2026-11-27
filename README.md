@@ -1,7 +1,23 @@
 # homerunner
 
-**Run your private repositories' CI on a machine you already own** — one command per repository,
-and a flat refusal to do the thing that would hurt you.
+A command-line tool that runs the CI of your private GitHub repositories on a Linux machine you already own, so you stop paying for or waiting on GitHub Actions minutes. One command per repository, and it refuses to register a runner on a public repository.
+
+![Terminal output of homerunner doctor on a Mac, where it reports that the machine cannot host a runner, followed by the passing test suite](docs/demo.svg)
+
+The picture is real output, captured on macOS, where `doctor` correctly says that this machine cannot keep a runner alive. Registering a runner needs Linux with systemd and a signed-in `gh`, so it was not run for the picture. The sample output further down shows what `add` prints on Linux. The same text:
+
+```console
+$ homerunner doctor
+  yes  the gh CLI is installed
+  yes  gh is signed in as YauhenBichel
+  NO   this is Linux (systemd user services): darwin
+       the runner works elsewhere; homerunner cannot keep it alive there yet
+  ---  latest runner release: 2.338.2
+
+$ uv run --with pytest pytest -q
+.....................................                                    [100%]
+37 passed in 0.03s
+```
 
 [![tests](https://github.com/YauhenBichel/homerunner/actions/workflows/tests.yml/badge.svg)](https://github.com/YauhenBichel/homerunner/actions/workflows/tests.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
@@ -10,22 +26,26 @@ GitHub Actions minutes are free on public repositories and metered on private on
 runs out, every job fails before it runs a step — `steps=0`, which looks like a broken build and
 isn't one. Meanwhile there is a perfectly good machine under your desk doing nothing between tasks.
 
+## Quick start
+
+homerunner is not on PyPI yet, so install it from GitHub. You need Python 3.10 or newer, Linux with systemd, and the [`gh` CLI](https://cli.github.com) signed in (`gh auth login`).
+
 ```bash
-pip install homerunner
-homerunner add YauhenBichel/llm-harness
+uv tool install git+https://github.com/YauhenBichel/homerunner   # or: pip install git+https://github.com/YauhenBichel/homerunner
+homerunner doctor                                                  # can this machine host a runner?
+homerunner add YOUR-NAME/your-private-repo
 ```
 
-That registers a runner for that repository, installs a user service that keeps it alive, and tells
-you what to put in the workflow:
+Expected: `doctor` lists what is missing, with the fix for each line. `add` registers a runner for that repository, installs a user service that keeps it alive, and tells you what to put in the workflow:
 
 ```
-  runner 2.337.0 -> /home/yauhen/.local/share/homerunner/yauhenbichel-llm-harness
-  labels: self-hosted, yserver
-  service homerunner-yauhenbichel-llm-harness: active
+  runner 2.337.0 -> /home/you/.local/share/homerunner/you-your-private-repo
+  labels: self-hosted, myhost
+  service homerunner-you-your-private-repo: active
 
 Point a workflow at it:
 
-  runs-on: [self-hosted, yserver]
+  runs-on: [self-hosted, myhost]
 ```
 
 ## The refusal
@@ -54,6 +74,39 @@ GitHub documents it; people do it anyway, because nothing stops them at the mome
 - **No token of its own.** Everything that needs credentials goes through the `gh` CLI you have
   already signed in. The registration token it fetches lives for an hour and never reaches disk.
   There is nothing here worth stealing.
+
+## When to use it
+
+- You have private repositories, your Actions minutes ran out (or you want to save them), and a Linux box that is idle most of the day.
+- You want CI that waits for the machine's real job (low CPU and disk priority) and starts again after a reboot.
+
+## When not to use it
+
+- Public repositories. Hosted runners are free there, and a self-hosted runner would run strangers' code on your machine.
+- Many machines or autoscaling. Use Actions Runner Controller.
+- macOS or Windows. The runner works there, but homerunner cannot keep it alive yet.
+
+## FAQ
+
+### How do I run GitHub Actions on my own server for a private repository?
+
+Run `homerunner add owner/repo`, then set `runs-on: [self-hosted, <label>]` in the workflow. The label is printed by `add`.
+
+### Why does every job fail with steps=0?
+
+That is what private repositories show when the Actions minutes quota is used up. The job is refused before it runs a step. A self-hosted runner does not use the quota.
+
+### Does it send my data anywhere?
+
+It sends nothing of its own. It calls the `gh` CLI to read the repository's visibility and to fetch a registration token, and it downloads the official GitHub runner release. Your workflows then talk to GitHub as any runner does. It stores no token.
+
+### How do I remove a runner?
+
+`homerunner remove owner/repo`, and add `--purge` to delete its files.
+
+### How is it different from setting up a runner by hand, or from Actions Runner Controller?
+
+By hand you download the runner, register it, write a service file and remember the safety rules. This does those steps and refuses the public-repository mistake. Actions Runner Controller autoscales runners on Kubernetes; this is for one machine.
 
 ## Commands
 
